@@ -4,7 +4,10 @@
   :description "Describe dash-capi here"
   :author "Your Name <your.name@example.com>"
   :license "Specify license here"
-  :depends-on (#:sqlite)
+  :depends-on (#:sqlite
+               #:com.informatimago.common-lisp.html-parser
+               #:alexandria
+               #:cl-fad)
   :serial t
   :components ((:file "package")
                (:file "dash-capi")))
