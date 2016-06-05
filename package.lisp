@@ -2,6 +2,6 @@
 
 (defpackage #:dash-capi
   (:add-use-defaults t)
-  (:use #:cl)
+  (:use #:cl :capi)
   (:export main))
 

@@ -11,11 +11,21 @@
 (capi:define-interface dash-capi-main-window ()
   ((application-interface :initarg :application-interface))
   (:panes
-   (label capi:title-pane)
-   (drawing capi:output-pane))
+   (input-directory-edit text-input-pane 
+                         :title "Path to CAPI HTML documentation"
+                         :buttons 
+                         '(:browse-file (:directory t :image :std-file-open) :ok nil))
+   (output-directory-edit text-input-pane 
+                          :title "Output path"
+                         :buttons 
+                         '(:browse-file (:directory t :image :std-file-open) :ok nil))
+   (log-pane collector-pane :buffer-name "Output buffer")
+   (generate-button push-button :text "Generate" :callback 'on-generate-button))
   (:layouts
    (main-layout capi:column-layout
-                '(label drawing)))
+                '(input-directory-edit output-directory-edit log-pane generate-button)
+                :adjust :center
+                :y-ratios '(nil nil 1 nil)))
   (:default-initargs
    :layout 'main-layout
    :best-width 640
@@ -33,6 +43,28 @@
     (capi:destroy application)
     ))
 
+
+(defun on-generate-button (data self)
+  ;; could be called from edit fields or as a button itself
+  (declare (ignore data))
+  (with-slots (input-directory-edit
+               output-directory-edit
+               log-pane) self
+    (let ((source-path (text-input-pane-text input-directory-edit))
+          (dest-path (text-input-pane-text output-directory-edit)))
+      ;; verify what paths are not empty
+      (when (and (> (length source-path) 0) (> (length dest-path) 0))
+        ;; some sanity checks. if directories exists at all
+        (cond ((not (lw:file-directory-p source-path))
+               (display-message "Source path does not exist" source-path))
+              ((not (lw:file-directory-p dest-path))
+               (display-message "Destination path does not exist" dest-path))
+              (t (generate-docset source-path dest-path (collector-pane-stream log-pane))))))))
+
+(defun generate-docset (source dest log-stream)
+  (format log-stream "Source path: ~a~%" source)  
+  (format log-stream "Destination path: ~a~%" dest)
+  )
 
 ;;----------------------------------------------------------------------------
 ;; The application interface
