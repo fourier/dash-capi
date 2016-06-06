@@ -6,10 +6,10 @@
 
 (defconstant +docset-name+ "capi.docset")
 (defconstant +docset-documents-path+ "Contents/Resources/Documents/")
-(defconstant +capi-index-files+ '("capi-m-172.htm"  ; CAPI
-                                  "capi-m-688.htm"  ; graphics-ports
-                                  "capi-m-862.htm"  ; graphic-tools
-                                  "capi-m-882.htm")) ; color
+(defconstant +capi-index-files+ '(("capi-m-172.htm" capi) ; CAPI
+                                  ("capi-m-688.htm" graphics-ports) ; graphics-ports
+                                  ("capi-m-862.htm" lw-gt) ; graphic-tools
+                                  ("capi-m-882.htm" color))) ; color
 (defconstant +docset-plist-info-filename+ "Contents/Info.plist")
 (defconstant +docset-plist-info-contents+
              "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
@@ -32,6 +32,8 @@
 </dict>
 </plist>")
 (defconstant +docset-db-filename+ "Contents/Resources/docSet.dsidx")
+(defconstant +capi-icon-filename+ "lispworks.gif")
+(defconstant +docset-icon-filename+ "icon.png")
 
 ;;----------------------------------------------------------------------------
 ;; The main window
@@ -123,6 +125,9 @@ to the destination DEST directory"
         ;; create plist info
         (format log-stream "Creating plist.info~%")
         (create-plist-info dest)
+        ;; create an icon
+        (format log-stream "Create an icon file~%")
+        (create-icon source dest)
         ;; populate database
         (format log-stream "Creating index database~%")
         (create-database dest index)
@@ -132,11 +137,11 @@ to the destination DEST directory"
 
 (defun parse-html (source-path)
   "By given location of the LispWorks HTML documentation SOURCE-PATH,
-parses the index file and returns the list of pairs (name href)"
+parses the index files and returns the list of (name type href)"
   ;; concatenate several lists
   (apply (alexandria:curry #'concatenate 'list)
          ;; for every index file ...
-         (loop for index-file in +capi-index-files+
+         (loop for (index-file package) in +capi-index-files+
                collect
                ;; ... collect the results of this operation into one list (of lists)
                ;; these lists will be contatenated by 'concatenate' call above
@@ -154,9 +159,10 @@ parses the index file and returns the list of pairs (name href)"
                                                          (and (listp x) (eql (car x) :h4))) body)))
                      (mapcar (lambda (h4)
                                (let* ((h4-flat (alexandria:flatten h4))
-                                      (name (car (last h4-flat)))
+                                      (name (string-trim '(#\Space #\Tab) (car (last h4-flat))))
+                                      (type "Function")
                                       (href (cadr (member :href h4-flat))))
-                                 (cons name href))) h4-tags)))))))
+                                 (list name type href))) h4-tags)))))))
 
 (defun create-plist-info (dest)
   "Create the proper Info.plist file in the destination DEST"
@@ -179,13 +185,31 @@ parses the index file and returns the list of pairs (name href)"
          (db (sqlite:connect docset-db-fname)))
     (sqlite:execute-non-query db "CREATE TABLE searchIndex(id INTEGER PRIMARY KEY, name TEXT, type TEXT, path TEXT)")
     (sqlite:execute-non-query db "CREATE UNIQUE INDEX anchor ON searchIndex (name, type, path)")
-    (mapcar (lambda (pair)
+    (mapcar (lambda (entry)
               (sqlite:execute-non-query
                db
-               "INSERT OR IGNORE INTO searchIndex(name, type, path) VALUES (?, 'Function', ?)" (car pair) (cdr pair)))
+               "INSERT OR IGNORE INTO searchIndex(name, type, path) VALUES (?, ?, ?)"
+               (first entry) (second entry) (third entry)))
             index)
     (sqlite:disconnect db)))
-  
+
+
+(defun create-icon (source-path dest)
+  "Convert the lispworks icon to the 32x32 png file and place it to
+the appropriate place"
+  (let ((source-image 
+         (concatenate 'string
+                      (namestring (truename source-path))
+                      +capi-icon-filename+))
+        (dest-image
+         (concatenate 'string
+                      (namestring (truename dest))
+                      +docset-name+
+                      "/"
+                      +docset-icon-filename+)))
+    (opticl:write-png-file dest-image
+                           (opticl:resize-image
+                            (opticl:read-gif-file source-image) 32 32))))
 
 ;;----------------------------------------------------------------------------
 ;; The application interface

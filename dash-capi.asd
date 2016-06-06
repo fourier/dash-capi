@@ -7,7 +7,8 @@
   :depends-on (#:sqlite
                #:com.informatimago.common-lisp.html-parser
                #:alexandria
-               #:cl-fad)
+               #:cl-fad
+               #:opticl)
   :serial t
   :components ((:file "package")
                (:file "dash-capi")))
