@@ -35,6 +35,12 @@
 (defconstant +capi-icon-filename+ "lispworks.gif")
 (defconstant +docset-icon-filename+ "icon.png")
 
+
+;;----------------------------------------------------------------------------
+;; Docset entry
+;;----------------------------------------------------------------------------
+(defstruct (docset-entry (:conc-name ds-)) name type href package)
+
 ;;----------------------------------------------------------------------------
 ;; The main window
 ;;----------------------------------------------------------------------------
@@ -100,7 +106,14 @@ to the destination DEST directory"
   (format log-stream "Source path: ~a~%" source)  
   (format log-stream "Destination path: ~a~%" dest)
   (handler-case
-      (let* ((index (parse-html source))
+      ;; index is a concatenated list of packages and parsed html contents
+      (let* ((index (append (parse-html source)
+                             ;; insert predefined packages
+                             (mapcar (lambda (entry)
+                                       (make-docset-entry :name (symbol-name (cadr entry))
+                                                          :type "Package"
+                                                          :href (car entry)))
+                                     +capi-index-files+)))
              (docset-path (concatenate 'string
                                        (namestring (truename dest))
                                        +docset-name+))
@@ -137,7 +150,7 @@ to the destination DEST directory"
 
 (defun parse-html (source-path)
   "By given location of the LispWorks HTML documentation SOURCE-PATH,
-parses the index files and returns the list of (name type href)"
+parses the index files and returns the list of docset-entry"
   ;; concatenate several lists
   (apply (alexandria:curry #'concatenate 'list)
          ;; for every index file ...
@@ -162,7 +175,11 @@ parses the index files and returns the list of (name type href)"
                                       (name (string-trim '(#\Space #\Tab) (car (last h4-flat))))
                                       (type "Function")
                                       (href (cadr (member :href h4-flat))))
-                                 (list name type href))) h4-tags)))))))
+                                 (make-docset-entry :name name
+                                                    :type type
+                                                    :href href
+                                                    :package package))) h4-tags)))))))
+
 
 (defun create-plist-info (dest)
   "Create the proper Info.plist file in the destination DEST"
@@ -183,22 +200,19 @@ parses the index files and returns the list of (name type href)"
                                        "/"
                                        +docset-db-filename+))
          (db (sqlite:connect docset-db-fname)))
-    ;; create tables
+    ;; drop previous table
+    (sqlite:execute-non-query db "DROP TABLE IF EXISTS searchIndex")
+    ;; create index table
     (sqlite:execute-non-query db "CREATE TABLE searchIndex(id INTEGER PRIMARY KEY, name TEXT, type TEXT, path TEXT)")
     (sqlite:execute-non-query db "CREATE UNIQUE INDEX anchor ON searchIndex (name, type, path)")
-    ;; insert predefined packages
-    (mapcar (lambda (entry)
-              (sqlite:execute-non-query
-               db
-               "INSERT OR IGNORE INTO searchIndex(name, type, path) VALUES (?, 'Package', ?)"
-               (symbol-name (cadr entry)) (car entry)))
-            +capi-index-files+)
     ;; insert symbols
     (mapcar (lambda (entry)
               (sqlite:execute-non-query
                db
                "INSERT OR IGNORE INTO searchIndex(name, type, path) VALUES (?, ?, ?)"
-               (first entry) (second entry) (third entry)))
+               (ds-name entry)
+               (ds-type entry)
+               (ds-href entry)))
             index)
     (sqlite:disconnect db)))
 
