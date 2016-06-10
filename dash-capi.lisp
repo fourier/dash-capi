@@ -39,7 +39,36 @@
 ;;----------------------------------------------------------------------------
 ;; Docset entry
 ;;----------------------------------------------------------------------------
-(defstruct (docset-entry (:conc-name ds-)) name type href package)
+(defclass docset-entry ()
+  ((name :reader ds-name :initarg :name)
+   (type :reader ds-type :initarg :type)
+   (href :reader ds-href :initarg :href)
+   (package :reader ds-package :initarg :package)))
+
+(defmethod initialize-instance :after ((self docset-entry) &key &allow-other-keys)
+  "Constructor. Update the type of the entry"
+  (with-slots (type package name) self
+    ;; either package or symbol inside package
+    (if (find-package name)
+        (setf type "Package") ; package
+        (when-let (symb (find-symbol (string-upcase name) package))
+          (setf type 
+                (cond ((and (fboundp symb) 
+                            (not (macro-function symb))
+                            (not (special-operator-p symb))) ; function
+                       "Function")
+                      ((and (fboundp symb)
+                            (macro-function symb)
+                            (not (special-operator-p symb))) ; macro
+                       "Macro")
+                      ((and (fboundp symb) (special-operator-p symb))
+                       "Builtin")
+                      ((find-class symb nil)
+                       "Class")
+                      ((boundp symb)
+                       "Variable")
+                      (t "Builtin")))))))
+
 
 ;;----------------------------------------------------------------------------
 ;; The main window
@@ -110,9 +139,10 @@ to the destination DEST directory"
       (let* ((index (append (parse-html source)
                              ;; insert predefined packages
                              (mapcar (lambda (entry)
-                                       (make-docset-entry :name (symbol-name (cadr entry))
-                                                          :type "Package"
-                                                          :href (car entry)))
+                                       (make-instance
+                                        'docset-entry
+                                        :name (symbol-name (cadr entry))
+                                        :href (car entry)))
                                      +capi-index-files+)))
              (docset-path (concatenate 'string
                                        (namestring (truename dest))
@@ -175,10 +205,11 @@ parses the index files and returns the list of docset-entry"
                                       (name (string-trim '(#\Space #\Tab) (car (last h4-flat))))
                                       (type "Function")
                                       (href (cadr (member :href h4-flat))))
-                                 (make-docset-entry :name name
-                                                    :type type
-                                                    :href href
-                                                    :package package))) h4-tags)))))))
+                                 (make-instance 'docset-entry
+                                                :name name
+                                                :type type
+                                                :href href
+                                                :package package))) h4-tags)))))))
 
 
 (defun create-plist-info (dest)
