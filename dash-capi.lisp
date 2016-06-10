@@ -4,7 +4,7 @@
 
 ;;; "dash-capi" goes here. Hacks and glory await!
 
-(defconstant +docset-name+ "capi.docset")
+(defconstant +docset-name+ "CAPI.docset")
 (defconstant +docset-documents-path+ "Contents/Resources/Documents/")
 (defconstant +capi-index-files+ '(("capi-m-172.htm" capi) ; CAPI
                                   ("capi-m-688.htm" graphics-ports) ; graphics-ports
@@ -34,6 +34,7 @@
 (defconstant +docset-db-filename+ "Contents/Resources/docSet.dsidx")
 (defconstant +capi-icon-filename+ "lispworks.gif")
 (defconstant +docset-icon-filename+ "icon.png")
+(defconstant +docset-icon-filename2x+ "icon@2x.png")
 
 
 ;;----------------------------------------------------------------------------
@@ -260,10 +261,20 @@ the appropriate place"
                       (namestring (truename dest))
                       +docset-name+
                       "/"
-                      +docset-icon-filename+)))
+                      +docset-icon-filename+))
+        (dest-image2x
+         (concatenate 'string
+                      (namestring (truename dest))
+                      +docset-name+
+                      "/"
+                      +docset-icon-filename2x+)))
     (opticl:write-png-file dest-image
                            (opticl:resize-image
+                            (opticl:read-gif-file source-image) 16 16))
+    (opticl:write-png-file dest-image2x
+                           (opticl:resize-image
                             (opticl:read-gif-file source-image) 32 32))))
+
 
 ;;----------------------------------------------------------------------------
 ;; The application interface
