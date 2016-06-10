@@ -183,8 +183,17 @@ parses the index files and returns the list of (name type href)"
                                        "/"
                                        +docset-db-filename+))
          (db (sqlite:connect docset-db-fname)))
+    ;; create tables
     (sqlite:execute-non-query db "CREATE TABLE searchIndex(id INTEGER PRIMARY KEY, name TEXT, type TEXT, path TEXT)")
     (sqlite:execute-non-query db "CREATE UNIQUE INDEX anchor ON searchIndex (name, type, path)")
+    ;; insert predefined packages
+    (mapcar (lambda (entry)
+              (sqlite:execute-non-query
+               db
+               "INSERT OR IGNORE INTO searchIndex(name, type, path) VALUES (?, 'Package', ?)"
+               (symbol-name (cadr entry)) (car entry)))
+            +capi-index-files+)
+    ;; insert symbols
     (mapcar (lambda (entry)
               (sqlite:execute-non-query
                db
