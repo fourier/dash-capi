@@ -68,6 +68,7 @@
                        "Class")
                       ((boundp symb)
                        "Variable")
+                      ((ignore-errors (subtypep symb 't)) "Type")
                       (t "Builtin")))))))
 
 
