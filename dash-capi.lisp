@@ -2,8 +2,9 @@
 
 (in-package #:dash-capi)
 
-;;; "dash-capi" goes here. Hacks and glory await!
-
+;;----------------------------------------------------------------------------
+;; Constants
+;;----------------------------------------------------------------------------
 (defconstant +docset-name+ "CAPI.docset")
 (defconstant +docset-documents-path+ "Contents/Resources/Documents/")
 (defconstant +capi-index-files+ '(("capi-m-172.htm" capi) ; CAPI

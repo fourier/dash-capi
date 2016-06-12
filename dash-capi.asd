@@ -1,9 +1,9 @@
 ;;;; dash-capi.asd
 
 (asdf:defsystem #:dash-capi
-  :description "Describe dash-capi here"
-  :author "Your Name <your.name@example.com>"
-  :license "Specify license here"
+  :description "dash-capi is a tool to convert LW CAPI documentation to Dash docset"
+  :author "Alexey Veretennikov <alexey.veretennikov@gmail.com>"
+  :license "MIT"
   :depends-on (#:sqlite
                #:com.informatimago.common-lisp.html-parser
                #:alexandria
